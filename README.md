@@ -6,7 +6,7 @@ It evaluates job candidates by analyzing their **CV (resume)** and **Project Rep
 ---
 
 ## Tech Stack
-- **Node.js v22.9.0** – Backend service & worker
+- **Node.js with Express.js as Router** – Backend service & worker
 - **MySQL** – Database for storing jobs & results
 - **RabbitMQ** – Message broker for job queueing
 - **ChromaDB** – Vector database for storing job descriptions and rubrics
