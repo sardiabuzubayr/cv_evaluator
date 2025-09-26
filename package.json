@@ -1,0 +1,29 @@
+{
+  "name": "ai-cv-evaluator",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "start": "node src/index.js",
+    "worker": "node src/worker.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@chroma-core/default-embed": "^0.1.8",
+    "@chroma-core/openai": "^0.1.7",
+    "@google/genai": "^1.20.0",
+    "amqplib": "^0.10.9",
+    "chromadb": "^3.0.15",
+    "dotenv": "^17.2.2",
+    "express": "^5.1.0",
+    "mammoth": "^1.11.0",
+    "multer": "^2.0.2",
+    "mysql2": "^3.15.1",
+    "pdf2json": "^3.2.2",
+    "uuid": "^13.0.0"
+  }
+}
