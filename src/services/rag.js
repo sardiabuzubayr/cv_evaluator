@@ -57,8 +57,8 @@ export async function findDocs(collection, query, limit) {
 // Initialize
 //vector docs chunck
 const docs = [
-   "Job Description: Product Engineer Backend. Responsible for building scalable backend services with Node.js, Go, Docker.",
-   "Experience with backend languages and frameworks (Node.js, Django, Rails)",
+   "Job Description: Backend with responsible for building scalable services with Node.js, Go, Docker.",
+   "Experiences in backend languages and frameworks such as (Node.js, Django, Rails) and experience with LLMs such as OpenAI or Gemini for AI-powered backend solutions",
    "Evaluation Rubric: Correctness, Code Quality, Resilience, Documentation, Creativity."
 ]
 

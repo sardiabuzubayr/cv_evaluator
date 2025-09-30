@@ -6,13 +6,13 @@ export async function runEvaluation(job) {
 
    const cvData = await extractCV(job.id, job.cvText || "No CV data provided")
 
-   const jobDesc = await findDocs(collection, "Product Engineer Backend job description", 2)
-   const rubric = await findDocs(collection, "Project evaluation rubric for Product Engineer Backend role", 1)
+   const jobDesc = await findDocs(collection, "Backend job description", 2)
+   const rubric = await findDocs(collection, "Project evaluation rubric for Backend role", 1)
 
    const jobContext = [...jobDesc, ...rubric].join("\n")
 
    const cvEvalPrompt = `
-    You are an evaluator. Compare this candidate info with the job requirements for the Product Engineer Backend. Focus on skills Node.js or Django or Rails.
+    You are an evaluator. Compare this candidate info with the job requirements for the Backend. Focus on skills Node.js or Django or Rails.
     Return JSON: { "match_rate": float (0-1), "feedback": string }
 
     Candidate: ${JSON.stringify(cvData)}
