@@ -17,6 +17,8 @@ export default {
 			}
 
 			const cvText = await extractText(cvFile.path)
+
+			console.log(`CV Text : \n${cvText}`)
 			const projectText = await extractText(projectFile.path)
 
 			await db.query(

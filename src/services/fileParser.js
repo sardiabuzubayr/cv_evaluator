@@ -1,24 +1,45 @@
 import fs from 'fs/promises'
 import path from 'path'
-import PDFParser from 'pdf2json'
 import mammoth from 'mammoth'
+import { ai } from "./geminiAi.js"
 
-function readPdf(filePath) {
-    return new Promise((resolve, reject) => {
-        const pdfParser = new PDFParser(null, 1)
+export async function readPdf(filePath) {
+    try {
+        const buffer = await fs.readFile(filePath);
+        const base64data = buffer.toString("base64");
 
-        pdfParser.on("pdfParser_dataError", (errData) => {
-            console.error('Error extracting text from PDF:', errData.parserError)
-            resolve(null)
+        const response = await ai.models.generateContent({
+            model: process.env.GEMINI_MODEL, 
+            contents: [
+                {
+                    role: "user",
+                    parts: [
+                        {
+                            inlineData: {
+                                mimeType: "application/pdf",
+                                data: base64data
+                            }
+                        },
+                        {
+                            text: `
+                            Extract all readable text from this PDF.
+                            - Remove non-standard symbols, bullet icons, and decorative characters.
+                            - Return clean plain text only, without JSON or markdown.
+                            - Preserve logical structure by keeping section titles (e.g., Skills, Experience, Projects, Education, Introduction, Implementation, Conclusion).
+                            - Separate sections with a blank line for readability.
+                            - Do not add extra commentary or explanations.
+                            `
+                        }
+                    ]
+                }
+            ]
         })
 
-        pdfParser.on("pdfParser_dataReady", () => {
-            const extractedText = pdfParser.getRawTextContent()
-            resolve(extractedText)
-        })
-
-        pdfParser.loadPDF(filePath)
-    })
+        return response.text || "";
+    } catch (err) {
+        console.error("Error extracting text with Gemini:", err)
+        throw err
+    }
 }
 
 export async function extractText(filePath) {
@@ -45,6 +66,8 @@ export async function extractText(filePath) {
             console.warn(`Warning: Unsupported file type: ${extension}. Skipping extraction.`)
             return null
         }
+
+        console.log(extractedText)
 
         return extractedText
 
