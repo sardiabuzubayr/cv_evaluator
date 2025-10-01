@@ -10,11 +10,7 @@ export async function runEvaluation(job) {
    const rubric = await findDocs(collection, "Project evaluation rubric for Backend role", 1)
 
    const jobContext = [...jobDesc, ...rubric].join("\n")
-
-   // evaluator.js
-
-   // evaluator.js: Gunakan prompt ini sebelum Anda memanggil LLM untuk evaluasi CV.
-
+   
    const cvEvalPrompt = `
     You are an evaluator for a Backend Developer role. Your task is to score the candidate's CV against the Job Description and Rubric.
 
