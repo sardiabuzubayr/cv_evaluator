@@ -1,8 +1,7 @@
-import { sendJob } from "./queue.js"
+import { QUEUE_EVALUATE, QUEUE_EXTRACT_CV, sendJob } from "./queue.js"
 import { v4 as uuidv4 } from "uuid"
-import { extractText } from "./services/fileParser.js"
 import { db } from "./db.js"
-import fs from "fs/promises"
+import path from 'path'
 
 export default {
 	upload: async (req, res) => {
@@ -13,26 +12,26 @@ export default {
 			const projectFile = req.files["project"]?.[0]
 
 			if (!cvFile || !projectFile) {
-				return res.status(400).json({ error: "CV and Project Report are required" })
+				return res.status(400).json({ error: "CV and Project Report are required", status:"failed" })
 			}
 
-			const cvText = await extractText(cvFile.path)
-
-			console.log(`CV Text : \n${cvText}`)
-			const projectText = await extractText(projectFile.path)
+			const extension = path.extname(cvFile.path).toLowerCase()
+			if (extension !== '.pdf' || extension === '.docx' || extension === '.txt') {
+				return res.status(500).json({ error: "Wrong file type", status:"failed" })
+			}
 
 			await db.query(
 				"INSERT INTO jobs (id, cv_text, project_text, status) VALUES (?, ?, ?, ?)",
-				[id, cvText, projectText, "uploaded"]
+				[id, null, null, "uploaded"]
 			)
 
-			await fs.unlink(cvFile.path)
-			await fs.unlink(projectFile.path)
+			const job = { id, cvFile: cvFile.path, projectFile: projectFile.path }
 
+			await sendJob(QUEUE_EXTRACT_CV, job)
 			res.json({ id, status: "uploaded" })
 		} catch (err) {
 			console.error(err)
-			res.status(500).json({ error: "Failed to process files" })
+			res.status(500).json({ error: "Failed to process files", status:"failed" })
 		}
 	},
 
@@ -46,10 +45,13 @@ export default {
 				return res.status(404).json({ error: "Job not found" })
 			}
 
+			if(rows[0].status === 'processing' || rows[0].status === 'completed'){
+				return res.json({ id, status: rows[0].status })
+			}
 			await db.query("UPDATE jobs SET status = ? WHERE id = ?", ["queued", id])
 
 			const job = { id, cvText: rows[0].cv_text, projectText: rows[0].project_text }
-			await sendJob(job)
+			await sendJob(QUEUE_EVALUATE,job)
 
 			res.json({ id, status: "queued" })
 		} catch (err) {

@@ -20,8 +20,8 @@ Run the following SQL to create the `jobs` table:
 ```sql
 CREATE TABLE jobs (
   id CHAR(36) PRIMARY KEY,
-  cv_text LONGTEXT NOT NULL,
-  project_text LONGTEXT NOT NULL,
+  cv_text LONGTEXT DEFAULT NULL,
+  project_text LONGTEXT DEFAULT NULL,
   status ENUM('uploaded','queued','processing','completed','failed') DEFAULT 'uploaded',
   result JSON NULL,             
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,

@@ -11,108 +11,162 @@ export async function runEvaluation(job) {
 
    const jobContext = [...jobDesc, ...rubric].join("\n")
 
-   const cvEvalPrompt = `
-    You are an evaluator. Compare this candidate info with the job requirements for the Backend. Focus on skills Node.js or Django or Rails.
-    Return JSON: { "match_rate": float (0-1), "feedback": string }
+   // evaluator.js
 
-    Candidate: ${JSON.stringify(cvData)}
-    Job Description: ${jobContext}
-  `
+   // evaluator.js: Gunakan prompt ini sebelum Anda memanggil LLM untuk evaluasi CV.
+
+   const cvEvalPrompt = `
+    You are an evaluator for a Backend Developer role. Your task is to score the candidate's CV against the Job Description and Rubric.
+
+    Score the candidate 1-5 on the following four weighted parameters:
+    1. Technical Skills Match (40%)
+    2. Experience Level (25%)
+    3. Relevant Achievements (20%)
+    4. Cultural/Collaboration Fit (15%)
+
+    ### OUTPUT RULES:
+    - Return ONLY a valid JSON object strictly following the provided schema.
+    - Scores must be between 1 and 5.
+
+    Candidate Info: ${JSON.stringify(cvData)}
+    Job Description & Context: ${jobContext}`
 
    console.log(`cvEvalPrompt :\n ${cvEvalPrompt}`)
+
    const cvEvalSchema = {
       type: "object",
       properties: {
-         match_rate: {
+         technical_skills_score: {
             type: "number",
-            description: "A float value between 0 and 1 representing how well the candidate matches the job requirements."
+            description: "Score 1-5 for Technical Skills Match (Weight: 40%). Focus on backend, databases, APIs, cloud, and AI/LLM exposure."
          },
-         feedback: {
+         experience_level_score: {
+            type: "number",
+            description: "Score 1-5 for Experience Level (Weight: 25%). Focus on years of experience and project complexity."
+         },
+         relevant_achievements_score: {
+            type: "number",
+            description: "Score 1-5 for Relevant Achievements (Weight: 20%). Focus on the impact and scale of past work."
+         },
+         cultural_fit_score: {
+            type: "number",
+            description: "Score 1-5 for Cultural/Collaboration Fit (Weight: 15%). Focus on communication, learning mindset, and teamwork."
+         },
+         overall_feedback: {
             type: "string",
-            description: "A detailed string providing feedback on the candidate's strengths and weaknesses relative to the job requirements."
+            description: "Detailed feedback summarizing candidate strengths, weaknesses, and key findings based on these four scored parameters."
          }
       },
-      required: ["match_rate", "feedback"]
+      required: ["technical_skills_score", "experience_level_score", "relevant_achievements_score", "cultural_fit_score", "overall_feedback"]
    }
 
    const cvEval = await callLLM(job.id, cvEvalPrompt, cvEvalSchema)
+   console.log(`CV Response LLM : ${JSON.stringify(cvEval)}`)
+   let cv_match_rate = 0
+   let cv_feedback = cvEval.overall_feedback || "No CV feedback available"
+
+   if (cvEval.technical_skills_score) {
+      const WEIGHTS = {
+         TS: 0.40, // Technical Skills
+         EL: 0.25, // Experience Level
+         RA: 0.20, // Relevant Achievements
+         CF: 0.15  // Cultural Fit
+      }
+
+      const totalWeightedScore = (
+         (cvEval.technical_skills_score || 0) * WEIGHTS.TS +
+         (cvEval.experience_level_score || 0) * WEIGHTS.EL +
+         (cvEval.relevant_achievements_score || 0) * WEIGHTS.RA +
+         (cvEval.cultural_fit_score || 0) * WEIGHTS.CF
+      )
+      cv_match_rate = parseFloat((totalWeightedScore * 20).toFixed(2))
+   }
+
    let projectEval = {
-      correctness: 0,
-      code_quality: 0,
-      resilience: 0,
-      documentation: 0,
-      creativity: 0,
+      correctness_score: 0,
+      code_quality_score: 0,
+      resilience_score: 0,
+      documentation_score: 0,
+      creativity_score: 0,
       weighted_average: 0,
       feedback: "No project report provided for evaluation."
    }
 
    if (job.projectText && job.projectText.trim().length > 0) {
       const projectEvalPrompt = `
-      You are a technical evaluator for a Backend Product Engineer role. 
-      Evaluate the Project Report using the given Rubric. 
+         You are a technical evaluator for a Backend Developer role. Evaluate the Project Report based on the provided text, using the following Rubric.
 
-      ### OUTPUT RULES:
-      - Return ONLY a valid JSON object. 
-      - JSON must contain: correctness, code_quality, resilience, documentation, creativity (scores 1-5), and feedback (detailed analysis).
-      - Feedback must explain the reasoning for each score.
+         Score the project on these five weighted parameters:
+         1. Correctness (Prompt & Chaining) - 30%
+         2. Code Quality & Structure - 25%
+         3. Resilience & Error Handling - 20%
+         4. Documentation & Explanation - 15%
+         5. Creativity / Bonus - 10%
 
-      ### RUBRIC:
-      - Correctness (1-5): Accuracy of implementation, use of prompts/chaining, context injection.
-      - Code Quality (1-5): Modularity, reusability, testing quality.
-      - Resilience (1-5): Error handling, retries, robustness for long jobs.
-      - Documentation (1-5): Clarity of README, setup steps, trade-offs explained.
-      - Creativity (1-5): Enhancements beyond basic requirements.
+         ### OUTPUT RULES:
+         - Return ONLY a valid JSON object strictly following the provided schema.
+         - All scores must be integers between 1 and 5.
 
-      ### INPUT:
-      Project Report:
-      ${job.projectText}
-
-      Rubric & Job Requirements:
-      ${jobContext}
-      `
+         Project Report Text: ${job.projectText}
+         Context / Rubric Details: ${jobContext}
+`
 
       const projectEvalSchema = {
          type: "object",
          properties: {
-            correctness: {
+            correctness_score: {
                type: "number",
-               description: "Score from 1-5 for Prompt Design, LLM Chaining, and RAG context injection, based on the provided rubric."
+               description: "Score 1-5 for Correctness (Weight: 30%). Focus on implementation of LLM chaining, RAG, and prompt design."
             },
-            code_quality: {
+            code_quality_score: {
                type: "number",
-               description: "Score from 1-5 for code structure, modularity, reusability, and testing."
+               description: "Score 1-5 for Code Quality & Structure (Weight: 25%). Focus on clean, modular, and reusable code."
             },
-            resilience: {
+            resilience_score: {
                type: "number",
-               description: "Score from 1-5 for handling long jobs, retries, exponential back-off, and randomness control."
+               description: "Score 1-5 for Resilience & Error Handling (Weight: 20%). Focus on handling long jobs, retries, and API failures."
             },
-            documentation: {
+            documentation_score: {
                type: "number",
-               description: "Score from 1-5 for README clarity, setup instructions, and trade-off explanations."
+               description: "Score 1-5 for Documentation & Explanation (Weight: 15%). Focus on README clarity and setup instructions."
             },
-            creativity: {
+            creativity_score: {
                type: "number",
-               description: "Score from 1-5 for extra features beyond the core requirements."
+               description: "Score 1-5 for Creativity / Bonus (Weight: 10%). Focus on extra features beyond core requirements."
             },
             feedback: {
                type: "string",
-               description: "Detailed feedback justifying all five scores given above."
+               description: "Detailed feedback summarizing the score rationale for all five parameters."
             }
          },
-         required: ["correctness", "code_quality", "resilience", "documentation", "creativity", "feedback"]
+         required: ["correctness_score", "code_quality_score", "resilience_score", "documentation_score", "creativity_score", "feedback"]
       }
+
       console.log(`projectEvalPrompt \n: ${projectEvalPrompt}`)
       projectEval = await callLLM(job.id, projectEvalPrompt, projectEvalSchema)
       projectEval = typeof llmResult === 'object' && llmResult !== null ? llmResult : projectEval
+      console.log(`Project Report Response LLM : ${JSON.stringify(projectEval)}`)
+      
+      if (projectEval.correctness_score) {
+         const WEIGHTS = {
+            C: 0.30,
+            Q: 0.25,
+            R: 0.20,
+            D: 0.15,
+            T: 0.10 
+         }
 
-      if (projectEval.correctness) {
-         projectEval.weighted_average = parseFloat((
-            (0.3 * (projectEval.correctness || 0)) + 
-            (0.25 * (projectEval.code_quality || 0)) +
-            (0.2 * (projectEval.resilience || 0)) +
-            (0.15 * (projectEval.documentation || 0)) +
-            (0.1 * (projectEval.creativity || 0))
-         ).toFixed(2))
+         const totalWeightedScore = (
+            (Math.max(1, Math.min(5, projectEval?.correctness_score || 0))) * WEIGHTS.C +
+            (Math.max(1, Math.min(5, projectEval?.code_quality_score || 0))) * WEIGHTS.Q +
+            (Math.max(1, Math.min(5, projectEval?.resilience_score || 0))) * WEIGHTS.R +
+            (Math.max(1, Math.min(5, projectEval?.documentation_score || 0))) * WEIGHTS.D +
+            (Math.max(1, Math.min(5, projectEval?.creativity_score || 0))) * WEIGHTS.T
+         )
+
+         projectEval.weighted_average = parseFloat((totalWeightedScore).toFixed(2))
+      } else {
+         projectEval.weighted_average = 0
       }
    }
 
@@ -126,8 +180,8 @@ export async function runEvaluation(job) {
    const summary = await callLLM(job.id, summaryPrompt)
 
    const evalResult = {
-      cv_match_rate: cvEval.match_rate || 0,
-      cv_feedback: cvEval.feedback || "No feedback available",
+      cv_match_rate: cv_match_rate || 0,
+      cv_feedback: cv_feedback || "No feedback available",
       project_score: projectEval.weighted_average,
       project_feedback: projectEval.feedback || "No project feedback available",
       overall_summary: summary || "No summary available"
